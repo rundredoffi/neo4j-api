@@ -23,13 +23,51 @@ app.get('/', (req, res) => {
 Endpoints pour les fournisseurs
 */
 //TODO : Ajouter les endpoints pour les fournisseurs
-app.get('/fournisseur', (req, res) => {
-    res.json({ message: 'Endpoints pour les fournisseurs' });
+app.get('/fournisseurs', async  (req, res) => {
+    const session = driver.session(); // Créer une session par requête
+    try {
+        const result = await session.run(
+        'MATCH (n:Fournisseur) RETURN n'
+        );
+
+        const records = result.records.map(record => ({
+        'fournisseur': record.get('n').properties,
+        }));
+
+        res.json(records);
+    } catch (error) {
+        console.error('Error fetching data from Neo4j:', error);
+        res.status(500).send('Internal Server Error');
+    } finally {
+        await session.close(); // Toujours fermer la session
+    }
 });
-app.post('/fournisseur', (req, res) => {
+app.get('/fournisseurs/:id', async (req, res) => {
+    const session = driver.session(); // Créer une session par requête
+    try {
+        const result = await session.run(
+            'MATCH (n:Fournisseur) WHERE n.nom = $id RETURN n',
+            { id: req.params.id }
+        );
+
+        if (result.records.length === 0) {
+            return res.status(404).json({ error: 'Fournisseur non trouvé' });
+        }
+
+        const fournisseur = result.records[0].get('n').properties;
+        res.json({ fournisseur: fournisseur });
+    } catch (error) {
+        console.error('Error fetching data from Neo4j:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    } finally {
+        await session.close(); // Toujours fermer la session
+    }
+});
+
+app.post('/fournisseurs', async (req, res) => {
     res.json({ message: 'Créer un nouveau fournisseur' });
 });
-app.put('/fournisseur/:id', (req, res) => {
+app.put('/fournisseurs/:id', async(req, res) => {
     res.json({ message: `Mettre à jour le fournisseur avec l'ID ${req.params.id}` });
 });
 
