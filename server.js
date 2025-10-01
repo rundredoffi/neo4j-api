@@ -65,7 +65,46 @@ app.get('/fournisseurs/:id', async (req, res) => {
 });
 
 app.post('/fournisseurs', async (req, res) => {
-    res.json({ message: 'Créer un nouveau fournisseur' });
+    const session = driver.session(); // Créer une session par requête
+    try {
+        const { nom, ville, contact } = req.body;
+
+        // Validation des champs requis
+        if (!nom || !ville || !contact) {
+            return res.status(400).json({ 
+                error: 'Les champs nom, ville et contact sont requis' 
+            });
+        }
+
+        // Vérifier si le fournisseur existe déjà
+        const checkResult = await session.run(
+            'MATCH (n:Fournisseur) WHERE n.nom = $nom RETURN n',
+            { nom: nom }
+        );
+
+        if (checkResult.records.length > 0) {
+            return res.status(409).json({ 
+                error: 'Un fournisseur avec ce nom existe déjà' 
+            });
+        }
+
+        // Créer le nouveau fournisseur
+        const result = await session.run(
+            'CREATE (n:Fournisseur {nom: $nom, ville: $ville, contact: $contact}) RETURN n',
+            { nom: nom, ville: ville, contact: contact }
+        );
+
+        const nouveauFournisseur = result.records[0].get('n').properties;
+        res.status(201).json({ 
+            message: 'Fournisseur créé avec succès',
+            fournisseur: nouveauFournisseur 
+        });
+    } catch (error) {
+        console.error('Error creating data in Neo4j:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    } finally {
+        await session.close(); // Toujours fermer la session
+    }
 });
 app.put('/fournisseurs/:id', async(req, res) => {
     res.json({ message: `Mettre à jour le fournisseur avec l'ID ${req.params.id}` });
