@@ -2,6 +2,7 @@ const express = require('express');
 const neo4j = require('neo4j-driver');
 const cors = require('cors');
 const fournisseursRoutes = require('./routes/fournisseurs');
+const produitsRoutes = require('./routes/produits');
 
 const app = express();
 const port = 3000;
@@ -13,7 +14,9 @@ app.use(express.json());
 // Neo4j Driver
 const driver = neo4j.driver(
   'bolt://localhost:7687',
-  neo4j.auth.basic('neo4j', 'password') // Remplacer avec ses identifiants
+  neo4j.auth.basic('neo4j', 'password'), {
+    disableLosslessIntegers: true
+  } // Remplacer avec ses identifiants
 );
 
 // Endpoint root
@@ -25,6 +28,10 @@ app.get('/', (req, res) => {
 Routes pour les fournisseurs
 */
 app.use('/fournisseurs', fournisseursRoutes(driver));
+/*
+Routes pour les produits
+*/
+app.use('/produits', produitsRoutes(driver));
 
 // Endpoint to get graph data
 app.get('/graph', async (req, res) => {
