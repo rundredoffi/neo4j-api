@@ -3,6 +3,7 @@ const neo4j = require('neo4j-driver');
 const cors = require('cors');
 const fournisseursRoutes = require('./routes/fournisseurs');
 const produitsRoutes = require('./routes/produits');
+const EntrepotsRoutes = require('./routes/entrepots');
 
 const app = express();
 const port = 3000;
@@ -32,6 +33,10 @@ app.use('/fournisseurs', fournisseursRoutes(driver));
 Routes pour les produits
 */
 app.use('/produits', produitsRoutes(driver));
+/*
+Routes pour les entrepôts
+*/
+app.use('/entrepots', EntrepotsRoutes(driver));
 
 // Endpoint to get graph data
 app.get('/graph', async (req, res) => {
