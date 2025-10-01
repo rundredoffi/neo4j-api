@@ -150,6 +150,69 @@ function fournisseursRoutes(driver) {
         }
     });
 
+    // DELETE /fournisseurs/:id - Supprimer un fournisseur
+    router.delete('/:id', async (req, res) => {
+        const session = driver.session();
+        try {
+            // Vérifier d'abord si le fournisseur existe
+            const checkResult = await session.run(
+                'MATCH (n:Fournisseur) WHERE n.nom = $id RETURN n',
+                { id: req.params.id }
+            );
+
+            if (checkResult.records.length === 0) {
+                return res.status(404).json({ error: 'Fournisseur non trouvé' });
+            }
+
+            // Supprimer toutes les relations d'abord, puis le fournisseur
+            const deleteResult = await session.run(
+                'MATCH (n:Fournisseur) WHERE n.nom = $id DETACH DELETE n RETURN 1 as deleted',
+                { id: req.params.id }
+            );
+
+            if (deleteResult.records.length > 0) {
+                res.json({ 
+                    message: 'Fournisseur supprimé avec succès',
+                    fournisseur_supprime: req.params.id
+                });
+            } else {
+                res.status(500).json({ error: 'Erreur lors de la suppression' });
+            }
+        } catch (error) {
+            console.error('Error deleting data in Neo4j:', error);
+            res.status(500).json({ 
+                error: 'Internal Server Error', 
+                details: error.message 
+            });
+        } finally {
+            await session.close();
+        }
+    });
+
+    // GET /fournisseurs/:id/relations - Voir les relations d'un fournisseur
+    router.get('/:id/relations', async (req, res) => {
+        const session = driver.session();
+        try {
+            const result = await session.run(
+                'MATCH (n:Fournisseur)-[r]-(m) WHERE n.nom = $id RETURN n, r, m',
+                { id: req.params.id }
+            );
+
+            const relations = result.records.map(record => ({
+                fournisseur: record.get('n').properties,
+                relation: record.get('r').type,
+                connecte_a: record.get('m').properties
+            }));
+
+            res.json({ relations: relations });
+        } catch (error) {
+            console.error('Error fetching relations from Neo4j:', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        } finally {
+            await session.close();
+        }
+    });
+
     return router;
 }
 
