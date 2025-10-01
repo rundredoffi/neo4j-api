@@ -14,9 +14,9 @@ app.use(express.json());
 // Neo4j Driver
 const driver = neo4j.driver(
   'bolt://localhost:7687',
-  neo4j.auth.basic('neo4j', 'password'), {
-    disableLosslessIntegers: true
-  } // Remplacer avec ses identifiants
+  neo4j.auth.basic('neo4j', 'password'), { // Remplacer avec ses identifiants
+    disableLosslessIntegers: true // Stack overflow recommandation : https://stackoverflow.com/questions/42645342/neo4j-return-an-integer-instead-of-high-0-low-10
+  } 
 );
 
 // Endpoint root
