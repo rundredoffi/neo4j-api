@@ -107,7 +107,61 @@ app.post('/fournisseurs', async (req, res) => {
     }
 });
 app.put('/fournisseurs/:id', async(req, res) => {
-    res.json({ message: `Mettre à jour le fournisseur avec l'ID ${req.params.id}` });
+    const session = driver.session(); // Créer une session par requête
+    try {
+        const { nom, ville, contact } = req.body;
+
+        // Validation des champs requis
+        if (!nom || !ville || !contact) {
+            return res.status(400).json({ 
+                error: 'Les champs nom, ville et contact sont requis' 
+            });
+        }
+
+        // Vérifier d'abord si le fournisseur existe
+        const checkResult = await session.run(
+            'MATCH (n:Fournisseur) WHERE n.nom = $id RETURN n',
+            { id: req.params.id }
+        );
+
+        if (checkResult.records.length === 0) {
+            return res.status(404).json({ error: 'Fournisseur non trouvé' });
+        }
+
+        // Vérifier si un autre fournisseur a déjà ce nom (sauf le fournisseur actuel)
+        const duplicateCheck = await session.run(
+            'MATCH (n:Fournisseur) WHERE n.nom = $nom AND n.nom <> $id RETURN n',
+            { nom: nom, id: req.params.id }
+        );
+
+        if (duplicateCheck.records.length > 0) {
+            return res.status(409).json({ 
+                error: 'Un autre fournisseur avec ce nom existe déjà' 
+            });
+        }
+
+        // Mettre à jour le fournisseur
+        const updateResult = await session.run(
+            'MATCH (n:Fournisseur) WHERE n.nom = $id SET n.nom = $nom, n.ville = $ville, n.contact = $contact RETURN n',
+            { 
+                id: req.params.id,
+                nom: nom,
+                ville: ville,
+                contact: contact
+            }
+        );
+
+        const fournisseurMisAJour = updateResult.records[0].get('n').properties;
+        res.json({ 
+            message: 'Fournisseur mis à jour avec succès',
+            fournisseur: fournisseurMisAJour 
+        });
+    } catch (error) {
+        console.error('Error updating data in Neo4j:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    } finally {
+        await session.close(); // Toujours fermer la session
+    }
 });
 
 // Endpoint to get graph data
