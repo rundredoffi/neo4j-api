@@ -154,6 +154,44 @@ function produitsRoutes(driver) {
         }
     });
 
+    // DELETE /produits/:id - Supprimer un produit
+    router.delete('/:id', async (req, res) => {
+        const session = driver.session();
+        try {
+            // Vérifier d'abord si le produit existe
+            const checkResult = await session.run(
+                'MATCH (n:Produit) WHERE n.nom = $id RETURN n',
+                { id: req.params.id }
+            );
+
+            if (checkResult.records.length === 0) {
+                return res.status(404).json({ error: 'Produit non trouvé' });
+            }
+
+            // Supprimer le produit
+            const deleteResult = await session.run(
+                'MATCH (n:Produit) WHERE n.nom = $id DELETE n RETURN count(n) as deleted',
+                { id: req.params.id }
+            );
+
+            const deletedCount = deleteResult.records[0].get('deleted').toNumber();
+            
+            if (deletedCount > 0) {
+                res.json({ 
+                    message: 'Produit supprimé avec succès',
+                    produit_supprime: req.params.id
+                });
+            } else {
+                res.status(500).json({ error: 'Erreur lors de la suppression' });
+            }
+        } catch (error) {
+            console.error('Error deleting data in Neo4j:', error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        } finally {
+            await session.close();
+        }
+    });
+
     return router;
 }
 
